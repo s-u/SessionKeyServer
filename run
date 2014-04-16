@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if [ ! -e key.db ]; then
+   mkdir key.db
+   chmod 0700 key.db
+fi
+java -Xmx256m -Djava.library.path=. -cp SessionKeyServer.jar com.att.research.RCloud.SessionKeyServer -l 127.0.0.1 -p 4301 -d key.db >> server.log
