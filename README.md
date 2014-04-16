@@ -17,14 +17,18 @@ Supported requests:
     GET  /valid?realm=<realm>&token=<token>
 
 Response: text/plain
+
     <result>
     [<user>]
     [<source>]
 
 `<result>`  is one of NO, YES or SUPERCEDED:
-NO          invalid (no further content added)
-YES         valid and verified, user ID (attuid) is provided
-SUPERCEDED  the token used to be valid, but it has been superceded by
+
+`NO`          invalid (no further content added)
+
+`YES`         valid and verified, user ID (attuid) is provided
+
+`SUPERCEDED`  the token used to be valid, but it has been superceded by
             a new token, user ID (attuid) is also supplied
 
 `<user>`   is the user id supplied by the source
@@ -35,11 +39,13 @@ SUPERCEDED  the token used to be valid, but it has been superceded by
     GET  /revoke?realm=<realm>&token=<token>
 
 Response: text/plain
+
     <result>
 
 `<result>` is one of:
-OK       token revoked successfully
-INVALID  token is invalid
+
+`OK`       token revoked successfully
+`INVALID`  token is invalid
 
 Note that it is legal to revoke a superceded token.
 
@@ -51,7 +57,8 @@ The `<realm>` is mandatory for all requests and can be an arbitrary
 string that identifies the realm in which this token will be valid.
 
 
-Implementation details:
+### Implementation details
+
 Those details may change at any time, they are not guaranteed. The
 current implementation uses SHA-1 hashes for tokens and internal
 representation of realms. The token is a hash of a random UUID and the
