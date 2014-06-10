@@ -264,7 +264,7 @@ class SKSHandler implements HttpHandler {
 		    String user = queryMap.get("user");
 		    String pwd = queryMap.get("pwd");
 		    boolean succ = false;
-		    if (com.att.research.RCloud.PAM.checkUser(realm, user, pwd)) {
+		    if (com.att.research.RCloud.PAM.checkUser(realm_txt, user, pwd)) {
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			String sha1 = bytes2hex(md.digest());
