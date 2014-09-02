@@ -3,6 +3,7 @@ package com.att.research.RCloud;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.InputStream;
+import java.io.FileInputStream;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.InetAddress;
@@ -21,6 +22,14 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsParameters;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLParameters;
 
 import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.Environment;
@@ -36,14 +45,15 @@ public class SessionKeyServer {
     public static void main(String[] args) throws IOException, KeyStoreException {
 	int i = 0;
 	int port = 4431;
-	String bdb = null, listen = "*", tls_ks = null;
+	String bdb = null, listen = "*", tls_ks = null, tls_pwd = "SessionKeyServer";
 	while (i < args.length) {
 	    if (args[i].equals("-d") && ++i < args.length) bdb = args[i];
 	    else if (args[i].equals("-l") && ++i < args.length) listen = args[i];
 	    else if (args[i].equals("-p") && ++i < args.length) port = Integer.parseInt(args[i]);
+	    else if (args[i].equals("-P") && ++i < args.length) tls_pwd = args[i];
 	    else if (args[i].equals("-tls") && ++i < args.length) tls_ks = args[i];
 	    else if (args[i].equals("-h")) {
-		System.out.println("\n Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>]\n\n");
+		System.out.println("\n Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>] [-tls <keystore> [-P <password>]]\n\n");
 		System.exit(0);
 	    }
 	    i++;
@@ -56,8 +66,45 @@ public class SessionKeyServer {
 	InetSocketAddress addr = listen.equals("*") ? new InetSocketAddress(port) : new InetSocketAddress(listen, port);
 	HttpServer server;
 	if (tls_ks != null) {
-	    HttpsServer tls = HttpsServer.create(addr, 0); 
-	    server = tls;
+	    try {
+		HttpsServer tls = HttpsServer.create(addr, 0); 
+		SSLContext sslContext = SSLContext.getInstance("TLS");
+		char[] password = tls_pwd.toCharArray();
+		java.security.KeyStore ks = java.security.KeyStore.getInstance("JKS");
+		FileInputStream fis = new FileInputStream(tls_ks);
+		ks.load(fis, password);
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance ("SunX509");
+		kmf.init (ks, password);
+		TrustManagerFactory tmf = TrustManagerFactory.getInstance ("SunX509");
+		tmf.init (ks);
+		sslContext.init( kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+		tls.setHttpsConfigurator(new HttpsConfigurator(sslContext)
+		    {
+			public void configure ( HttpsParameters params )
+			{
+			    try {
+				// initialise the SSL context
+				SSLContext c = SSLContext.getDefault ();
+				SSLEngine engine = c.createSSLEngine ();
+				params.setNeedClientAuth ( false );
+				params.setCipherSuites ( engine.getEnabledCipherSuites () );
+				params.setProtocols ( engine.getEnabledProtocols () );
+				
+				// get the default parameters
+				SSLParameters defaultSSLParameters = c.getDefaultSSLParameters ();
+				params.setSSLParameters ( defaultSSLParameters );
+			    } catch (Exception ex) {
+				System.err.println("ERROR: Failed to create HTTPS port: " + ex);
+			    }
+			}
+		    } );
+		server = tls;
+	    } catch (Exception e) {
+		System.err.println("Unable to create HTTPS server: "+e);
+		e.printStackTrace();
+		System.exit(1);
+		server = null; // unreachable but the compiler can't figure it out
+	    }
 	} else server = HttpServer.create(addr, 0);
 	
 	server.createContext("/", new SKSHandler());
