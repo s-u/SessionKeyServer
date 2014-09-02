@@ -6,6 +6,7 @@ stores session keys/tokens. The current implementation is written in
 Java.
 
     Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>]
+                            [-tls <keystore> [-P <password>]]
 
 By default the server listens on port 4431 and binds on *
 If no database is specified, keys will be only kept in memory and
@@ -55,6 +56,17 @@ will supercede all previous tokens.
 
 The `<realm>` is mandatory for all requests and can be an arbitrary
 string that identifies the realm in which this token will be valid.
+
+### TLS/SSL mode
+
+When `-tls` is specified on the command line it must point to a valid
+Java key store file which will be used to load the private key and
+certificate(s) for the secure HTTP server (aka HTTPS). The keys and
+keystore password is set by default to `"SessionKeyServer"`, but can
+also be specified via the `-P` option or entered at the command line
+if `-PP` (password prompt) is specified. Obviously, if either the
+default password or `-P` is used the key security is left to the
+filesystem and the password does not provide additional protection.
 
 
 ### Implementation details
