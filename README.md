@@ -68,6 +68,28 @@ if `-PP` (password prompt) is specified. Obviously, if either the
 default password or `-P` is used the key security is left to the
 filesystem and the password does not provide additional protection.
 
+If you have existing PEM key and certificate (e.g. for use in Rserve),
+you can create Java keystore out of it via PKCS12 bundle as
+follows. First, concatenate any intermediate certificates into one
+file - from the server cert to the root cert, e.g.:
+
+    cat /data/rcloud/conf/server.crt /data/rcloud/conf/verisign.crt > CA-chain.crt
+
+Then create PKCS12 bundle:
+
+    openssl pkcs12 -export -inkey /data/rcloud/conf/server.key -in CA-chain.crt -out server.pkcs12
+
+Use `SessionKeyServer` as the password (unless you want to enter it by
+hand at each start). Then create a keystore out of that:
+
+    keytool -importkeystore -srckeystore server.pkcs12 -srcstoretype PKCS12 -destkeystore keystore    
+
+Make sure you use the same password you used for the key. When done,
+make sure you adjust the permissions such that only the user running
+SKS can read the keystore (and remote the intermediate pkcs12
+file). Now you can use `-tls keystore` option to run the
+SessionKeyServer in TLS/SSL mode.
+
 
 ### Implementation details
 
