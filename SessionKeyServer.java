@@ -51,9 +51,10 @@ public class SessionKeyServer {
 	    else if (args[i].equals("-l") && ++i < args.length) listen = args[i];
 	    else if (args[i].equals("-p") && ++i < args.length) port = Integer.parseInt(args[i]);
 	    else if (args[i].equals("-P") && ++i < args.length) tls_pwd = args[i];
+	    else if (args[i].equals("-PP")) tls_pwd = new String(System.console().readPassword("TLS keystore+key password: "));
 	    else if (args[i].equals("-tls") && ++i < args.length) tls_ks = args[i];
 	    else if (args[i].equals("-h")) {
-		System.out.println("\n Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>] [-tls <keystore> [-P <password>]]\n\n");
+		System.out.println("\n Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>] [-tls <keystore> [-P <password> | -PP]]\n\n");
 		System.exit(0);
 	    }
 	    i++;
