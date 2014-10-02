@@ -38,7 +38,8 @@ static int check_user_pam(const char *app, const char *user, const char *pwd) {
 
     ok = (retval == PAM_SUCCESS) ? 1 : 0;
 
-    pam_end(pamh, retval);
+    if (pamh)
+	pam_end(pamh, retval);
 
     return ok;
 }
