@@ -281,6 +281,33 @@ class SKSHandler implements HttpHandler {
 		    respond(exchange, 200, "NO\n");
 		    System.out.println("token: "+((new Date()).getTime())+" "+token+", INVALID");
 		    return;
+		} else if (requestPath.equals("/replace")) {
+		    String token = queryMap.get("token");
+		    if (token != null) {
+			String val = SessionKeyServer.ks.get("t:" + realm + ":" + token);
+			if (val != null) {
+			    String info[] = val.split("\n");
+			    if (info.length > 1) {
+				String tok = SessionKeyServer.ks.get("ut:" + realm + ":" + info[0]);
+				if (tok != null && tok.equals(token)) {
+				    // valid token, replace
+				    md.update(java.util.UUID.randomUUID().toString().getBytes());
+				    md.update(java.util.UUID.randomUUID().toString().getBytes());
+				    String sha1 = bytes2hex(md.digest());
+				    SessionKeyServer.ks.put("t:" + realm + ":" + sha1, info[0] + "\n" + info[1] + "\n");
+				    SessionKeyServer.ks.put("ut:" + realm + ":" + info[0], sha1);
+				    SessionKeyServer.ks.rm("t:" + realm + ":" + token);
+				    respond(exchange, 200, sha1 + "\n" + info[0] + "\n" + info[1] + "\n");
+				    System.out.println("replace: "+((new Date()).getTime())+" user='"+info[0]+"' "+info[1]+", "+realm_txt+":"+token+"/"+sha1+", VALID");
+				    return;
+				}
+			    }
+			}
+		    }
+		    System.out.println("replace: "+((new Date()).getTime())+" "+token+", INVALID");
+		    exchange.sendResponseHeaders(403, -1);
+		    exchange.close();
+		    return;
 		} else if (requestPath.equals("/revoke")) {
 		    String token = queryMap.get("token");
 		    if (token != null) {

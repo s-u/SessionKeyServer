@@ -17,7 +17,7 @@ Supported requests:
 
     GET  /valid?realm=<realm>&token=<token>
 
-Response: text/plain
+Response: `text/plain`
 
     <result>
     [<user>]
@@ -39,7 +39,7 @@ Response: text/plain
 
     GET  /revoke?realm=<realm>&token=<token>
 
-Response: text/plain
+Response: `text/plain`
 
     <result>
 
@@ -49,6 +49,20 @@ Response: text/plain
 `INVALID`  token is invalid
 
 Note that it is legal to revoke a superceded token.
+
+
+    GET  /replace?realm=<realm>&token=<token>
+
+Response: `text/plain`
+
+    <new token>
+    <user>
+    <source>
+
+Replaces a given token (if valid) by a newly generated token. The
+supplied token becomes invalid and only the new token is valid.
+The request fails with 403 error code if the supplied token is not
+valid.
 
 
 Note that requesting a new token in the same realm for the same user
