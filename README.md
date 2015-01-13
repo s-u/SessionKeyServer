@@ -6,7 +6,7 @@ stores session keys/tokens. The current implementation is written in
 Java.
 
     Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>]
-                            [-tls <keystore> [-P <password>]]
+                            [-tls <keystore> [-P <password>] [-PF <password file location>] [-PP]]
 
 By default the server listens on port 4431 and binds on *
 If no database is specified, keys will be only kept in memory and
@@ -67,6 +67,8 @@ also be specified via the `-P` option or entered at the command line
 if `-PP` (password prompt) is specified. Obviously, if either the
 default password or `-P` is used the key security is left to the
 filesystem and the password does not provide additional protection.
+Alternatively `-PF` allows the password to be read from a file in a keytab fashion
+which then needs to be protected by 400 or 600.
 
 If you have existing PEM key and certificate (e.g. for use in Rserve),
 you can create Java keystore out of it via PKCS12 bundle as
