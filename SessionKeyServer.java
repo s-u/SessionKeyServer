@@ -5,12 +5,13 @@ import java.io.OutputStream;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.File;
+import java.io.FileReader;
+import java.io.BufferedReader;
 import java.net.InetSocketAddress;
 import java.net.InetAddress;
 import java.net.URI;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
@@ -52,7 +53,7 @@ public class SessionKeyServer {
 	    else if (args[i].equals("-l") && ++i < args.length) listen = args[i];
 	    else if (args[i].equals("-p") && ++i < args.length) port = Integer.parseInt(args[i]);
 	    else if (args[i].equals("-P") && ++i < args.length) tls_pwd = args[i];
-	    else if (args[i].equals("-PF") && ++i < args.length) tls_pwd = new String(new Scanner(new File(args[i])).useDelimiter("\\Z").next());
+	    else if (args[i].equals("-PF") && ++i < args.length) tls_pwd = new BufferedReader(new FileReader(args[i])).readLine();
 	    else if (args[i].equals("-PP")) tls_pwd = new String(System.console().readPassword("TLS keystore+key password: "));
 	    else if (args[i].equals("-tls") && ++i < args.length) tls_ks = args[i];
 	    else if (args[i].equals("-h")) {
