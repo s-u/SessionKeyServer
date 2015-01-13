@@ -1,11 +1,9 @@
 JARS=$(shell ls jars/*.jar)
 JCP=$(shell ls jars/*.jar | tr '\n' :)
 
-#JAVA_HOME=$(JAVA_HOME:-"/usr/lib/jvm/java-7-openjdk-amd64")
 ifeq ("$(JAVA_HOME)","")
 JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
 endif
-
 JCPPFLAGS=-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 JLIBS=-L$(JAVA_HOME)/jre/lib/amd64/server -ljvm
 CFLAGS=-g -fPIC -O2
