@@ -1,8 +1,9 @@
 JARS=$(shell ls jars/*.jar)
 JCP=$(shell ls jars/*.jar | tr '\n' :)
 
-## Sorry, the following is hard-coded for the PAM module; if it breaks, the session server will work, just not use PAM
+ifeq ("$(JAVA_HOME)","")
 JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
+endif
 JCPPFLAGS=-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 JLIBS=-L$(JAVA_HOME)/jre/lib/amd64/server -ljvm
 CFLAGS=-g -fPIC -O2
