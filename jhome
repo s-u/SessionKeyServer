@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# detect JAVA_HOME from Java itself if not set
+
+if [ -n "$JAVA_HOME" ]; then
+    echo $JAVA_HOME
+    exit 0
+fi
+
+echo 'public class A{public static void main(String[]x){System.out.println(System.getProperty("java.home"));}};' > A.java
+if javac A.java && java -cp . A; then
+    rm -f A.java A.class
+    exit 0
+fi
+rm -f A.java A.class
+exit 1
