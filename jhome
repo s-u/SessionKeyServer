@@ -7,7 +7,10 @@ if [ -n "$JAVA_HOME" ]; then
     exit 0
 fi
 
-echo 'public class A{public static void main(String[]x){System.out.println(System.getProperty("java.home"));}};' > A.java
+PROP="$1"
+if [ -z "$PROP" ]; then PROP=java.home; fi
+
+echo "public class A{public static void main(String[]x){System.out.println(System.getProperty(\"$PROP\"));}};" > A.java
 if javac A.java && java -cp . A; then
     rm -f A.java A.class
     exit 0

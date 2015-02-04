@@ -3,8 +3,10 @@ JCP=$(shell ls jars/*.jar | tr '\n' :)
 
 ## Sorry, the following is hard-coded for the PAM module; if it breaks, the session server will work, just not use PAM
 JAVA_HOME:=$(shell ./jhome)
-JCPPFLAGS=-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I$(JAVA_HOME)/../include -I$(JAVA_HOME)/../include/linux
-JLIBS=-L$(JAVA_HOME)/jre/lib/amd64/server -L$(JAVA_HOME)/lib/amd64/server -ljvm
+OSARCH:=$(shell ./jhome os.arch)
+OSNAME:=$(shell uname | tr '[:upper:]' '[:lower:]')
+JCPPFLAGS=-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(OSNAME) -I$(JAVA_HOME)/../include -I$(JAVA_HOME)/../include/$(OSNAME)
+JLIBS=-L$(JAVA_HOME)/jre/lib/$(OSARCH)/server -L$(JAVA_HOME)/lib/$(OSARCH)/server -L$(JAVA_HOME)/jre/lib/server -L$(JAVA_HOME)/lib/server -ljvm
 CFLAGS=-g -fPIC -O2
 
 SessionKeyServer.jar: build/com/att/research/RCloud/SessionKeyServer.class
