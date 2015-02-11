@@ -14,9 +14,9 @@ SessionKeyServer.jar: build/com/att/research/RCloud/SessionKeyServer.class
 	rm -rf build/META-INF
 	(cd build && jar fc ../$@ *)
 
-build/com/att/research/RCloud/SessionKeyServer.class: SessionKeyServer.java PAM.java
+build/com/att/research/RCloud/SessionKeyServer.class: SessionKeyServer.java JaasAuth.java PAM.java
 	@-rm -rf build; mkdir build
-	javac $(JFLAGS) -d build -cp $(JCP) SessionKeyServer.java PAM.java
+	javac $(JFLAGS) -d build -cp $(JCP) SessionKeyServer.java JaasAuth.java PAM.java
 
 libPAM.so: pam.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(JCPPFLAGS) -shared -o $@ pam.c -lpam $(LIBS) $(JLIBS)
@@ -30,3 +30,4 @@ clean:
 	rm -rf build *~ libPAM.so SessionKeyServer.jar
 
 .PHONY: pam
+
