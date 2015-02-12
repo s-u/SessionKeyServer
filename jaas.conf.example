@@ -1,0 +1,17 @@
+KerberosModule {
+	com.sun.security.auth.module.Krb5LoginModule required
+	useKeyTab=false
+	storeKey=false
+	useTicketCache=false
+	client=true
+	debug=false
+	doNotPrompt=false;
+};
+
+LdapModule {
+	com.sun.security.auth.module.LdapLoginModule REQUIRED
+	userProvider="ldap://ip_adress:ldap_port/ou=users,dc=folder,dc=example,dc=com"
+	userFilter="uid={USERNAME}"
+	useSSL=false
+	debug=false;
+};
