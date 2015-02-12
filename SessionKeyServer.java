@@ -365,14 +365,16 @@ class SKSHandler implements HttpHandler {
                     String pwd = queryMap.get("pwd");
                     String module = queryMap.get("module") == null ? SessionKeyServer.default_module : queryMap.get("module");
                     boolean succ = false;
-                    if (((module.compareToIgnoreCase("pam") == 0) && com.att.research.RCloud.PAM.checkUser(realm_txt, user, pwd)) ||
+		    if (module.compareToIgnoreCase("pam") == 0)
+			module = "PAM"; // just make sure PAM and pam are the same since we use it as a source
+		    if ((module.equals("PAM") && com.att.research.RCloud.PAM.checkUser(realm_txt, user, pwd)) ||
 			com.att.research.RCloud.JaasAuth.jaasLogin(user, pwd.toCharArray(), module)) {
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			String sha1 = bytes2hex(md.digest());
 			SessionKeyServer.ks.put("t:" + realm + ":" + sha1, user + "\nauth/" + module + "\n");
 			SessionKeyServer.ks.put("ut:" + realm + ":" + user, sha1);
-			respond(exchange, 200, sha1 + "\n" + user + "\n" + module + "\n");
+			respond(exchange, 200, sha1 + "\n" + user + "\nauth/" + module + "\n");
 			exchange.close();
 			succ = true;
 		    } else {
