@@ -44,6 +44,7 @@ import com.sleepycat.je.OperationStatus;
 
 public class SessionKeyServer {
     public static KeyStore ks;
+    public static String default_module = "pam";
     public static void main(String[] args) throws IOException, KeyStoreException {
 	int i = 0;
 	int port = 4431;
@@ -56,8 +57,11 @@ public class SessionKeyServer {
 	    else if (args[i].equals("-PF") && ++i < args.length) tls_pwd = new BufferedReader(new FileReader(args[i])).readLine();
 	    else if (args[i].equals("-PP")) tls_pwd = new String(System.console().readPassword("TLS keystore+key password: "));
 	    else if (args[i].equals("-tls") && ++i < args.length) tls_ks = args[i];
+	    else if (args[i].equals("-default") && ++i < args.length) default_module = args[i];
+	    else if (args[i].equals("-krb5conf") && ++i < args.length) System.setProperty("java.security.krb5.conf", args[i]);
+	    else if (args[i].equals("-jaas") && ++i < args.length) System.setProperty("java.security.auth.login.config", args[i]);
 	    else if (args[i].equals("-h")) {
-		System.out.println("\n Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>] [-tls <keystore> [-P <password> | -PP]]\n\n");
+		System.out.println("\n Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>]\n                         [-default <module>] [-jaas <jaas.conf> [-krb5conf <krb5.conf>]]\n                         [-tls <keystore> [-P <password> | -PP]]\n\n");
 		System.exit(0);
 	    }
 	    i++;
@@ -338,7 +342,7 @@ class SKSHandler implements HttpHandler {
 			exchange.close();
 			return;
 		    }
-		} else if (requestPath.equals("/pam_token")) {
+		} else if (requestPath.equals("/pam_token")) { // this is for legacy - it is superceded by /auth_token
 		    String user = queryMap.get("user");
 		    String pwd = queryMap.get("pwd");
 		    boolean succ = false;
@@ -356,6 +360,26 @@ class SKSHandler implements HttpHandler {
                         exchange.close();
 		    }
 		    System.out.println("PAM: "+((new Date()).getTime())+" user='"+user+"', "+realm_txt+", "+(succ?"OK":"FAILED"));
+		} else if (requestPath.equals("/auth_token")) {
+                    String user = queryMap.get("user");
+                    String pwd = queryMap.get("pwd");
+                    String module = queryMap.get("module") == null ? SessionKeyServer.default_module : queryMap.get("module");
+                    boolean succ = false;
+                    if (((module.compareToIgnoreCase("pam") == 0) && com.att.research.RCloud.PAM.checkUser(realm_txt, user, pwd)) ||
+			com.att.research.RCloud.JaasAuth.jaasLogin(user, pwd.toCharArray(), module)) {
+			md.update(java.util.UUID.randomUUID().toString().getBytes());
+			md.update(java.util.UUID.randomUUID().toString().getBytes());
+			String sha1 = bytes2hex(md.digest());
+			SessionKeyServer.ks.put("t:" + realm + ":" + sha1, user + "\nauth/" + module + "\n");
+			SessionKeyServer.ks.put("ut:" + realm + ":" + user, sha1);
+			respond(exchange, 200, sha1 + "\n" + user + "\n" + module + "\n");
+			exchange.close();
+			succ = true;
+		    } else {
+			exchange.sendResponseHeaders(403, -1);
+			exchange.close();
+		    }
+		    System.out.println("AUTH/" +  module + ": " + ((new Date()).getTime()) + " user='" + user + "', " + realm_txt + ", " + (succ ? "OK" : "FAILED"));
 		} else {
 		    exchange.sendResponseHeaders(404, -1);
 		    exchange.close();
@@ -366,11 +390,11 @@ class SKSHandler implements HttpHandler {
 		exchange.close();
 	    }
 	} catch (java.security.NoSuchAlgorithmException noae) {
-		exchange.sendResponseHeaders(500, -1);
-		exchange.close();
+	    exchange.sendResponseHeaders(500, -1);
+	    exchange.close();
 	} catch (KeyStoreException kse) {
-		exchange.sendResponseHeaders(500, -1);
-		exchange.close();	    
+	    exchange.sendResponseHeaders(500, -1);
+	    exchange.close();
 	}
     }
 }

@@ -6,11 +6,17 @@ stores session keys/tokens. The current implementation is written in
 Java.
 
     Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>]
+                            [-default <module>] [-jaas <jaas.conf> [-krb5conf <krb5.conf>]]
                             [-tls <keystore> [-P <password>] [-PF <password file location>] [-PP]]
 
 By default the server listens on port 4431 and binds on *
 If no database is specified, keys will be only kept in memory and
 thus lost when the process dies.
+
+The default authentication module is PAM and it can be changed using the `-default` parameter.
+Any module other than PAM is routed to JAAS. If JAAS i sused, tt is possible to set necessary
+properties either via Java's `-D` on invocation or there are two convenience options `-jaas` for
+`java.security.auth.login.config` and `-krb5conf` for `java.security.krb5.conf`.
 
 
 Supported requests:
@@ -63,6 +69,19 @@ Replaces a given token (if valid) by a newly generated token. The
 supplied token becomes invalid and only the new token is valid.
 The request fails with 403 error code if the supplied token is not
 valid.
+
+
+    GET   /auth_token?realm=<realm>&user=<user>&pwd=<password>[&module=<module>]
+
+Response: `text/plain`
+
+    <token>
+    <user>
+    <source>
+
+Requests authentication using the module specified or if not specified
+whatever module is configured to be the default module on the server.
+For `/auth_token` requests the source is defined as `auth/<module>`.
 
 
 Note that requesting a new token in the same realm for the same user
