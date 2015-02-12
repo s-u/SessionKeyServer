@@ -346,7 +346,7 @@ class SKSHandler implements HttpHandler {
 		    String user = queryMap.get("user");
 		    String pwd = queryMap.get("pwd");
 		    boolean succ = false;
-		    if (com.att.research.RCloud.PAM.checkUser(realm_txt, user, pwd)) {
+		    if (com.att.research.RCloud.PAM.checkUser("login", user, pwd)) {
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			String sha1 = bytes2hex(md.digest());
@@ -367,7 +367,7 @@ class SKSHandler implements HttpHandler {
                     boolean succ = false;
 		    if (module.compareToIgnoreCase("pam") == 0)
 			module = "PAM"; // just make sure PAM and pam are the same since we use it as a source
-		    if ((module.equals("PAM") && com.att.research.RCloud.PAM.checkUser(realm_txt, user, pwd)) ||
+		    if ((module.equals("PAM") && com.att.research.RCloud.PAM.checkUser("login", user, pwd)) ||
 			com.att.research.RCloud.JaasAuth.jaasLogin(user, pwd.toCharArray(), module)) {
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
