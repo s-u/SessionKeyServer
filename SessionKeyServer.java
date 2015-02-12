@@ -44,7 +44,7 @@ import com.sleepycat.je.OperationStatus;
 
 public class SessionKeyServer {
     public static KeyStore ks;
-    public static String default_module = "pam";
+    public static String default_module = "pam", pam_realm = null;
     public static void main(String[] args) throws IOException, KeyStoreException {
 	int i = 0;
 	int port = 4431;
@@ -58,10 +58,11 @@ public class SessionKeyServer {
 	    else if (args[i].equals("-PP")) tls_pwd = new String(System.console().readPassword("TLS keystore+key password: "));
 	    else if (args[i].equals("-tls") && ++i < args.length) tls_ks = args[i];
 	    else if (args[i].equals("-default") && ++i < args.length) default_module = args[i];
+	    else if (args[i].equals("-pam-app") && ++i < args.length) pam_realm = args[i];
 	    else if (args[i].equals("-krb5conf") && ++i < args.length) System.setProperty("java.security.krb5.conf", args[i]);
 	    else if (args[i].equals("-jaas") && ++i < args.length) System.setProperty("java.security.auth.login.config", args[i]);
 	    else if (args[i].equals("-h")) {
-		System.out.println("\n Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>]\n                         [-default <module>] [-jaas <jaas.conf> [-krb5conf <krb5.conf>]]\n                         [-tls <keystore> [-P <password> | -PP]]\n\n");
+		System.out.println("\n Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>] [-pam-app <name>]\n                         [-default <module>] [-jaas <jaas.conf> [-krb5conf <krb5.conf>]]\n                         [-tls <keystore> [-P <password> | -PP]]\n\n");
 		System.exit(0);
 	    }
 	    i++;
@@ -346,7 +347,7 @@ class SKSHandler implements HttpHandler {
 		    String user = queryMap.get("user");
 		    String pwd = queryMap.get("pwd");
 		    boolean succ = false;
-		    if (com.att.research.RCloud.PAM.checkUser(realm_txt, user, pwd)) {
+		    if (com.att.research.RCloud.PAM.checkUser((SessionKeyServer.pam_realm == null) ? realm_txt : SessionKeyServer.pam_realm, user, pwd)) {
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			String sha1 = bytes2hex(md.digest());
@@ -367,7 +368,8 @@ class SKSHandler implements HttpHandler {
                     boolean succ = false;
 		    if (module.compareToIgnoreCase("pam") == 0)
 			module = "PAM"; // just make sure PAM and pam are the same since we use it as a source
-		    if ((module.equals("PAM") && com.att.research.RCloud.PAM.checkUser(realm_txt, user, pwd)) ||
+		    if ((module.equals("PAM") &&
+			 com.att.research.RCloud.PAM.checkUser((SessionKeyServer.pam_realm == null) ? realm_txt : SessionKeyServer.pam_realm, user, pwd)) ||
 			com.att.research.RCloud.JaasAuth.jaasLogin(user, pwd.toCharArray(), module)) {
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
