@@ -5,16 +5,20 @@ This is an implementation of a simple web-service that generates and
 stores session keys/tokens. The current implementation is written in
 Java.
 
-    Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>]
+    Usage: SessionKeyServer [-d <db-path>] [-l <address>] [-p <port>] [-pam-app <name>]
                             [-default <module>] [-jaas <jaas.conf> [-krb5conf <krb5.conf>]]
                             [-tls <keystore> [-P <password>] [-PF <password file location>] [-PP]]
 
-By default the server listens on port 4431 and binds on *
+By default the server listens on port 4431 and binds on `*`
 If no database is specified, keys will be only kept in memory and
 thus lost when the process dies.
 
 The default authentication module is PAM and it can be changed using the `-default` parameter.
-Any module other than PAM is routed to JAAS. If JAAS i sused, tt is possible to set necessary
+The `-pam-app` option can be used to override the application to report to PAM when authenticating,
+the default is to use the realm supplied in the request, but sometimes app-based authentication is not
+configured in the system and `-pam-app login` is a viable fall back to login authentication.
+
+Any module other than PAM is routed to JAAS. If JAAS is used, it is possible to set necessary
 properties either via Java's `-D` on invocation or there are two convenience options `-jaas` for
 `java.security.auth.login.config` and `-krb5conf` for `java.security.krb5.conf`.
 
