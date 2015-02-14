@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.Date;
 import java.util.concurrent.Executors;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -285,6 +286,37 @@ class SKSHandler implements HttpHandler {
 		    }
 		    respond(exchange, 200, "NO\n");
 		    System.out.println("token: "+((new Date()).getTime())+" "+token+", INVALID");
+		    return;
+                } else if (requestPath.equals("/get_key") || requestPath.equals("/gen_key")) { // key retrieval/generation
+		    String token = queryMap.get("token");
+		    if (token != null) {
+			String val = SessionKeyServer.ks.get("t:" + realm + ":" + token);
+			if (val != null) {
+			    String info[] = val.split("\n");
+			    if (info.length > 1) {
+				String tok = SessionKeyServer.ks.get("ut:" + realm + ":" + info[0]);
+				if (tok != null && tok.equals(token)) {
+                                    if (requestPath.equals("/gen_key")) {
+                                        SecureRandom random = new SecureRandom();
+                                        byte bytes[] = new byte[64]; // we generate 512-bit random keys, mostly only half is needed for AES anyway
+                                        random.nextBytes(bytes);
+                                        String key = bytes2hex(bytes);
+                                        SessionKeyServer.ks.put("k:" + val, key);
+                                        respond(exchange, 200, key);
+                                        System.out.println("key generated: "+((new Date()).getTime())+" user='"+info[0]+"' "+info[1]+", "+realm_txt+":"+token+", VALID");
+                                        return;
+                                    }
+                                    String key = SessionKeyServer.ks.get("k:" + val);
+				    respond(exchange, 200, (key == null) ? "" : key);
+				    System.out.println("key requested: "+((new Date()).getTime())+" user='"+info[0]+"' "+info[1]+", "+realm_txt+":"+token+", VALID, " + ((key == null) ? "ABSENT" : "PRESENT"));
+				    return;
+				}
+			    }
+			}
+		    }
+		    System.out.println("key: "+((new Date()).getTime())+" "+token+", INVALID");
+		    exchange.sendResponseHeaders(403, -1);
+		    exchange.close();
 		    return;
 		} else if (requestPath.equals("/replace")) {
 		    String token = queryMap.get("token");
