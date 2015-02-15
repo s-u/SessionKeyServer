@@ -1,3 +1,10 @@
+// versions:
+// 0.9 - private
+// 1.0 - public, /pam_token
+// 1.1 - /replace
+// 1.2 - /auth_token (JAAS)
+// 1.3 - /get_key, /gen_key, /version
+
 package com.att.research.RCloud;
 
 import java.io.IOException;
@@ -44,6 +51,7 @@ import com.sleepycat.je.LockMode;
 import com.sleepycat.je.OperationStatus;
 
 public class SessionKeyServer {
+    public static final String version = "1.3";
     public static KeyStore ks;
     public static String default_module = "pam", pam_realm = null;
     public static void main(String[] args) throws IOException, KeyStoreException {
@@ -120,7 +128,7 @@ public class SessionKeyServer {
 	server.createContext("/", new SKSHandler());
 	server.setExecutor(Executors.newCachedThreadPool());
 	server.start();
-	System.out.println("SessionKeyServer is listening on " + listen + ":" + port);
+	System.out.println("SessionKeyServer " + SessionKeyServer.version +" is listening on " + listen + ":" + port);
     }
 }
 
@@ -253,6 +261,11 @@ class SKSHandler implements HttpHandler {
 		    String kvp[] = param.split("=", 2);
 		    if (kvp.length > 1) queryMap.put(kvp[0], java.net.URLDecoder.decode(kvp[1]));  
 		}
+	    if (requestMethod.equalsIgnoreCase("GET") && requestPath.equals("/version")) {
+		respond(exchange, 200, SessionKeyServer.version + "\n");
+		return;
+	    }
+
 	    String realm = queryMap.get("realm"), realm_txt;
 	    if (realm == null) {
 		respond(exchange, 400, "ERR: missing realm\n");
