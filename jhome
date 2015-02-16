@@ -10,6 +10,8 @@ if [ -n "$JAVA_HOME" ]; then
         echo $JAVA_HOME
         exit 0
     fi
+    PATH="$JAVA_HOME/bin":"$PATH"
+    export PATH
 fi
 
 echo "public class A{public static void main(String[]x){System.out.println(System.getProperty(\"$PROP\"));}};" > A.java
