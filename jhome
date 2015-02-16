@@ -2,13 +2,15 @@
 #
 # detect JAVA_HOME from Java itself if not set
 
-if [ -n "$JAVA_HOME" ]; then
-    echo $JAVA_HOME
-    exit 0
-fi
-
 PROP="$1"
 if [ -z "$PROP" ]; then PROP=java.home; fi
+
+if [ -n "$JAVA_HOME" ]; then
+    if [ "$PROP" = java.home ]; then
+        echo $JAVA_HOME
+        exit 0
+    fi
+fi
 
 echo "public class A{public static void main(String[]x){System.out.println(System.getProperty(\"$PROP\"));}};" > A.java
 if javac A.java && java -cp . A; then
