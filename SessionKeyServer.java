@@ -4,6 +4,7 @@
 // 1.1 - /replace
 // 1.2 - /auth_token (JAAS)
 // 1.3 - /get_key, /gen_key, /version
+// 1.4 - /create_group, /mod_group, /group_hash
 
 package com.att.research.RCloud;
 
@@ -23,6 +24,7 @@ import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Date;
+import java.util.StringTokenizer;
 import java.util.concurrent.Executors;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -51,7 +53,7 @@ import com.sleepycat.je.LockMode;
 import com.sleepycat.je.OperationStatus;
 
 public class SessionKeyServer {
-    public static final String version = "1.3";
+    public static final String version = "1.4";
     public static KeyStore ks;
     public static String default_module = "pam", pam_realm = null;
     public static void main(String[] args) throws IOException, KeyStoreException {
@@ -231,6 +233,9 @@ class BDBKeyStore implements KeyStore {
 // -- KeyStore format (key => value)  --
 // t:<realm>:<token>  =>  <uid>\n<source>[\n<auxiliary data>]
 // ut:<realm>:<uid>   =>  <token>
+// k:<output from t:> =>  <key>
+// grk:<group>        =>  <group-key>
+// gr:<group>:<realm>:<user> => member|admin
 
 class SKSHandler implements HttpHandler {
     static String bytes2hex(byte[] a) {
@@ -253,6 +258,7 @@ class SKSHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
 	try {
 	    MessageDigest md = MessageDigest.getInstance("SHA-1");
+	    MessageDigest md256 = MessageDigest.getInstance("SHA-256");
 	    String requestMethod = exchange.getRequestMethod();
 	    String requestPath = exchange.getRequestURI().getPath();
 	    String requestQuery = exchange.getRequestURI().getRawQuery();
@@ -427,7 +433,132 @@ class SKSHandler implements HttpHandler {
 			exchange.close();
 		    }
 		    System.out.println("AUTH/" +  module + ": " + ((new Date()).getTime()) + " user='" + user + "', " + realm_txt + ", " + (succ ? "OK" : "FAILED"));
-		} else {
+		} else if (requestPath.equals("/group_hash")) {
+                    String group = queryMap.get("group");
+                    String salt  = queryMap.get("salt");
+                    String token = queryMap.get("token");
+                    if (token != null && group != null) {
+                        md.update(group.getBytes());
+                        String group_sha1 = bytes2hex(md.digest());
+                        String val = SessionKeyServer.ks.get("t:" + realm + ":" + token);
+                        if (val != null) {
+                            String info[] = val.split("\n");
+                            if (info.length > 1) {
+                                String tok = SessionKeyServer.ks.get("ut:" + realm + ":" + info[0]);
+                                if (tok != null && tok.equals(token)) {
+                                    String gacc = SessionKeyServer.ks.get("gr:" + group_sha1 + ":" + realm + ":" + info[0]);
+                                    if (gacc != null && (gacc.equals("admin") || gacc.equals("member"))) {
+                                        String gkey = SessionKeyServer.ks.get("grk:" + group_sha1);
+                                        if (gkey != null) {
+                                            if (salt != null) 
+                                                md256.update(salt.getBytes());
+                                            md256.update("\n".getBytes());
+                                            md256.update(gkey.getBytes());
+                                            String sha256 = bytes2hex(md256.digest());
+                                            respond(exchange, 200, sha256 + "\n");
+                                            System.out.println("group_hash: "+((new Date()).getTime())+" group='"+group+"', user='"+
+                                                               info[0]+"' "+info[1]+", "+realm_txt+":"+token);
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    exchange.sendResponseHeaders(403, -1);
+                    exchange.close();
+                    System.out.println("group_hash: "+((new Date()).getTime())+" group="+group+", "+token+", INVALID");
+                    return;
+                } else if (requestPath.equals("/create_group")) {
+                    String group = queryMap.get("group");
+                    String token = queryMap.get("token");
+                    if (token != null && group != null) {
+                        md.update(group.getBytes());
+                        String group_sha1 = bytes2hex(md.digest());
+                        String val = SessionKeyServer.ks.get("t:" + realm + ":" + token);
+                        if (val != null) {
+                            String info[] = val.split("\n");
+                            if (info.length > 1) {
+                                String tok = SessionKeyServer.ks.get("ut:" + realm + ":" + info[0]);
+                                if (tok != null && tok.equals(token)) {
+                                    String gkey = SessionKeyServer.ks.get("grk:" + group_sha1);
+                                    if (gkey != null) {
+                                        respond(exchange, 403, "ERROR: group exists");
+                                        exchange.close();
+                                        return;
+                                    }
+                                    SessionKeyServer.ks.put("gr:" + group_sha1 + ":" + realm + ":" + info[0], "admin");
+                                    md.update(java.util.UUID.randomUUID().toString().getBytes());
+                                    md.update(java.util.UUID.randomUUID().toString().getBytes());
+                                    String sha1 = bytes2hex(md.digest());
+                                    SessionKeyServer.ks.put("grk:" + group_sha1, sha1);
+                                    respond(exchange, 200, "OK\n");
+                                    exchange.close();
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    exchange.sendResponseHeaders(403, -1);
+                    exchange.close();
+                    System.out.println("create_group: "+((new Date()).getTime())+" group="+group+", "+token+", FAILED");
+                } else if (requestPath.equals("/mod_group")) {
+                    String group = queryMap.get("group");
+                    String token = queryMap.get("token");
+                    if (token != null && group != null) {
+                        md.update(group.getBytes());
+                        String group_sha1 = bytes2hex(md.digest());
+                        String val = SessionKeyServer.ks.get("t:" + realm + ":" + token);
+                        if (val != null) {
+                            String info[] = val.split("\n");
+                            if (info.length > 1) {
+                                String tok = SessionKeyServer.ks.get("ut:" + realm + ":" + info[0]);
+                                if (tok != null && tok.equals(token)) {
+                                    String gacc = SessionKeyServer.ks.get("gr:" + group_sha1 + ":" + realm + ":" + info[0]);
+                                    if (gacc != null && gacc.equals("admin")) {
+                                        String resp = "OK\n";
+                                        String usrlist = queryMap.get("add_members");
+                                        if (usrlist != null) {
+                                            System.out.println("mod_group: "+((new Date()).getTime())+" group='"+group+"', user='"+
+                                                               info[0]+"' "+realm_txt+", add members: " + usrlist);                                        
+                                            StringTokenizer st = new StringTokenizer(usrlist, ",");
+                                            while (st.hasMoreTokens())
+                                                SessionKeyServer.ks.put("gr:" + group_sha1 + ":" + realm + ":" + st.nextToken(), "member");
+                                        }
+                                        usrlist = queryMap.get("add_admins");
+                                        if (usrlist != null) {
+                                            System.out.println("mod_group: "+((new Date()).getTime())+" group='"+group+"', user='"+
+                                                               info[0]+"' "+realm_txt+", add admins: " + usrlist);
+                                            StringTokenizer st = new StringTokenizer(usrlist, ",");
+                                            while (st.hasMoreTokens())
+                                                SessionKeyServer.ks.put("gr:" + group_sha1 + ":" + realm + ":" + st.nextToken(), "admin");
+                                        }
+                                        usrlist = queryMap.get("remove");
+                                        if (usrlist != null) {
+                                            StringTokenizer st = new StringTokenizer(usrlist, ",");
+                                            System.out.println("mod_group: "+((new Date()).getTime())+" group='"+group+"', user='"+
+                                                               info[0]+"' "+realm_txt+", remove: " + usrlist);
+                                            while (st.hasMoreTokens()) {
+                                                String usr = st.nextToken();
+                                                // NOTE: we do NOT allow admin to remove himself, 
+                                                if (usr.equals(info[0]))
+                                                    resp = "WARN: self-removal ignored\n";
+                                                else
+                                                    SessionKeyServer.ks.rm("gr:" + group_sha1 + ":" + realm + ":" + st.nextToken());
+                                            }
+                                        }
+                                        respond(exchange, 200, resp);
+                                        exchange.close();
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    exchange.sendResponseHeaders(403, -1);
+                    exchange.close();
+                    System.out.println("mod_group: "+((new Date()).getTime())+" group="+group+", "+token+", FAILED");
+                } else {
 		    exchange.sendResponseHeaders(404, -1);
 		    exchange.close();
 		    return;
