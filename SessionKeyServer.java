@@ -522,16 +522,22 @@ class SKSHandler implements HttpHandler {
                                             System.out.println("mod_group: "+((new Date()).getTime())+" group='"+group+"', user='"+
                                                                info[0]+"' "+realm_txt+", add members: " + usrlist);                                        
                                             StringTokenizer st = new StringTokenizer(usrlist, ",");
-                                            while (st.hasMoreTokens())
-                                                SessionKeyServer.ks.put("gr:" + group_sha1 + ":" + realm + ":" + st.nextToken(), "member");
+                                            while (st.hasMoreTokens()) {
+                                                String usr = st.nextToken();
+                                                if (!usr.equals(""))
+                                                    SessionKeyServer.ks.put("gr:" + group_sha1 + ":" + realm + ":" + usr, "member");
+                                            }
                                         }
                                         usrlist = queryMap.get("add_admins");
                                         if (usrlist != null) {
                                             System.out.println("mod_group: "+((new Date()).getTime())+" group='"+group+"', user='"+
                                                                info[0]+"' "+realm_txt+", add admins: " + usrlist);
                                             StringTokenizer st = new StringTokenizer(usrlist, ",");
-                                            while (st.hasMoreTokens())
-                                                SessionKeyServer.ks.put("gr:" + group_sha1 + ":" + realm + ":" + st.nextToken(), "admin");
+                                            while (st.hasMoreTokens()) {
+                                                String usr = st.nextToken();
+                                                if (!usr.equals(""))
+                                                    SessionKeyServer.ks.put("gr:" + group_sha1 + ":" + realm + ":" + usr, "admin");
+                                            }
                                         }
                                         usrlist = queryMap.get("remove");
                                         if (usrlist != null) {
@@ -543,8 +549,8 @@ class SKSHandler implements HttpHandler {
                                                 // NOTE: we do NOT allow admin to remove himself, 
                                                 if (usr.equals(info[0]))
                                                     resp = "WARN: self-removal ignored\n";
-                                                else
-                                                    SessionKeyServer.ks.rm("gr:" + group_sha1 + ":" + realm + ":" + st.nextToken());
+                                                else if (!usr.equals(""))
+                                                    SessionKeyServer.ks.rm("gr:" + group_sha1 + ":" + realm + ":" + usr);
                                             }
                                         }
                                         respond(exchange, 200, resp);
