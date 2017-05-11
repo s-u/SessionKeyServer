@@ -14,9 +14,18 @@ SessionKeyServer.jar: build/com/att/research/RCloud/SessionKeyServer.class
 	rm -rf build/META-INF
 	(cd build && jar fc ../$@ *)
 
+CopyKeys.jar: build/com/att/research/RCloud/CopyKeys.class
+	(cd build && for jar in $(JARS); do jar fx ../$$jar; done)
+	rm -rf build/META-INF
+	(cd build && jar fc ../$@ *)
+
 build/com/att/research/RCloud/SessionKeyServer.class: SessionKeyServer.java JaasAuth.java PAM.java
 	@-rm -rf build; mkdir build
 	javac $(JFLAGS) -d build -cp $(JCP) SessionKeyServer.java JaasAuth.java PAM.java
+
+build/com/att/research/RCloud/CopyKeys.class: CopyKeys.java
+	@-rm -rf build; mkdir build
+	javac $(JFLAGS) -d build -cp $(JCP) CopyKeys.java
 
 libPAM.so: pam.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(JCPPFLAGS) -shared -o $@ pam.c -lpam $(LIBS) $(JLIBS)
