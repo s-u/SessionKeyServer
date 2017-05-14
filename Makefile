@@ -12,12 +12,12 @@ CFLAGS=-g -fPIC -O2
 SessionKeyServer.jar: build/com/att/research/RCloud/SessionKeyServer.class
 	(cd build && for jar in $(JARS); do jar fx ../$$jar; done)
 	rm -rf build/META-INF
-	(cd build && jar fc ../$@ *)
+	(cd build && jar fce ../$@ com.att.research.RCloud.SessionKeyServer *)
 
 CopyKeys.jar: build/com/att/research/RCloud/CopyKeys.class
 	(cd build && for jar in $(JARS); do jar fx ../$$jar; done)
 	rm -rf build/META-INF
-	(cd build && jar fc ../$@ *)
+	(cd build && jar fce ../$@ com.att.research.RCloud.CopyKeys *)
 
 build/com/att/research/RCloud/SessionKeyServer.class: SessionKeyServer.java JaasAuth.java PAM.java
 	@-rm -rf build; mkdir build
