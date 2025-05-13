@@ -19,9 +19,9 @@ CopyKeys.jar: build/com/att/research/RCloud/CopyKeys.class
 	rm -rf build/META-INF
 	(cd build && jar fce ../$@ com.att.research.RCloud.CopyKeys *)
 
-build/com/att/research/RCloud/SessionKeyServer.class: SessionKeyServer.java JaasAuth.java PAM.java
+build/com/att/research/RCloud/SessionKeyServer.class: SessionKeyServer.java JaasAuth.java PAM.java UserInfo.java
 	@-rm -rf build; mkdir build
-	javac $(JFLAGS) -d build -cp $(JCP) SessionKeyServer.java JaasAuth.java PAM.java
+	javac $(JFLAGS) -d build -cp $(JCP) SessionKeyServer.java JaasAuth.java PAM.java UserInfo.java
 
 build/com/att/research/RCloud/CopyKeys.class: CopyKeys.java
 	@-rm -rf build; mkdir build

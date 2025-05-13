@@ -12,9 +12,13 @@ public class PAM {
 	}
     }
 
-    native static boolean PAMchkUser(String app, String user, String pwd);
+    native static com.att.research.RCloud.UserInfo PAMchkUser(String app, String user, String pwd);
 
     static boolean checkUser(String app, String user, String pwd) {
-	return pam_loaded ? PAMchkUser(app, user, pwd) : false;
+	return pam_loaded ? (PAMchkUser(app, user, pwd) != null) : false;
+    }
+
+    static UserInfo checkUserWithInfo(String app, String user, String pwd) {
+	return pam_loaded ? PAMchkUser(app, user, pwd) : null;
     }
 }

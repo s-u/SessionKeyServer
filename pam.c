@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <pwd.h>
 
 static int my_conv(int num_msg, const struct pam_message **msg,
 	    struct pam_response **resp, void *appdata_ptr) {
@@ -46,10 +47,11 @@ static int check_user_pam(const char *app, const char *user, const char *pwd) {
 
 #include <jni.h>
 
-JNIEXPORT jboolean JNICALL Java_com_att_research_RCloud_PAM_PAMchkUser(JNIEnv *, jclass, jstring, jstring, jstring);
+JNIEXPORT jobject JNICALL Java_com_att_research_RCloud_PAM_PAMchkUser(JNIEnv *, jclass, jstring, jstring, jstring);
 
-jboolean JNICALL Java_com_att_research_RCloud_PAM_PAMchkUser(JNIEnv *env, jclass cls, jstring sApp, jstring sUser, jstring sPwd) {
+jobject JNICALL Java_com_att_research_RCloud_PAM_PAMchkUser(JNIEnv *env, jclass cls, jstring sApp, jstring sUser, jstring sPwd) {
     const char *app, *usr, *pwd;
+    jobject info = 0;
     int res = 0;
     if (!env || !sApp || !sUser || !sPwd) return 0;
     app = (*env)->GetStringUTFChars(env, sApp, 0);
@@ -60,11 +62,19 @@ jboolean JNICALL Java_com_att_research_RCloud_PAM_PAMchkUser(JNIEnv *env, jclass
 	    if (pwd) {
 		res = check_user_pam(app, usr, pwd);
 		(*env)->ReleaseStringUTFChars(env, sPwd, pwd);
+		if (res) { /* get info */
+		    struct passwd *pw = getpwnam(usr);
+		    jobject cls;
+		    cls = (*env)->FindClass(env, "com/att/research/RCloud/UserInfo");
+		    if (cls) {
+			jmethodID cons = (*env)->GetMethodID(env, cls, "<init>", "(Ljava/lang/String;JJ)V");
+			info = (*env)->NewObject(env, cls, cons, sUser, pw ? ((jlong)(pw->pw_uid)) : ((jlong)-1), pw ? ((jlong)(pw->pw_gid)) : ((jlong)-1));
+		    }
+		}
 	    }
 	    (*env)->ReleaseStringUTFChars(env, sUser, usr);
 	} 
 	(*env)->ReleaseStringUTFChars(env, sApp, app);
     }
-    return (jboolean) res;
+    return info;
 }
-

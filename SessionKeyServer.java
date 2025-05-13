@@ -5,7 +5,7 @@
 // 1.2 - /auth_token (JAAS)
 // 1.3 - /get_key, /gen_key, /version
 // 1.4 - /create_group, /mod_group, /group_hash
-
+// 1.5 - authentication with PAM also returns uid
 package com.att.research.RCloud;
 
 import java.io.IOException;
@@ -53,7 +53,7 @@ import com.sleepycat.je.LockMode;
 import com.sleepycat.je.OperationStatus;
 
 public class SessionKeyServer {
-    public static final String version = "1.4";
+    public static final String version = "1.5";
     public static KeyStore ks;
     public static String default_module = "pam", pam_realm = null;
     public static void main(String[] args) throws IOException, KeyStoreException {
@@ -292,12 +292,12 @@ class SKSHandler implements HttpHandler {
 			    if (info.length > 1) {
 				String tok = SessionKeyServer.ks.get("ut:" + realm + ":" + info[0]);
 				if (tok != null && tok.equals(token)) {
-				    respond(exchange, 200, "YES\n" + info[0] + "\n" + info[1] + "\n");
-				    System.out.println("token: "+((new Date()).getTime())+" user='"+info[0]+"' "+info[1]+", "+realm_txt+":"+token+", VALID");
+				    respond(exchange, 200, "YES\n" + val + "\n");
+				    System.out.println("token: "+((new Date()).getTime())+" user='"+info[0]+"' "+info[1]+", "+realm_txt+":"+token+" {" + val.replace("\n"," ") + "}, VALID");
 				    return;
 				} else {
-				    respond(exchange, 200, "SUPERCEDED\n" + info[0] + "\n" + info[1] + "\n");
-				    System.out.println("token: "+((new Date()).getTime())+" user='"+info[0]+"' "+info[1]+", "+realm_txt+":"+token+", SUPERCEDED");
+				    respond(exchange, 200, "SUPERCEDED\n" + val + "\n");
+				    System.out.println("token: "+((new Date()).getTime())+" user='"+info[0]+"' "+info[1]+", "+realm_txt+":"+token+" {" + val.replace("\n"," ") + "}, SUPERCEDED");
 				    return;
 				}
 			    }
@@ -350,10 +350,10 @@ class SKSHandler implements HttpHandler {
 				    md.update(java.util.UUID.randomUUID().toString().getBytes());
 				    md.update(java.util.UUID.randomUUID().toString().getBytes());
 				    String sha1 = bytes2hex(md.digest());
-				    SessionKeyServer.ks.put("t:" + realm + ":" + sha1, info[0] + "\n" + info[1] + "\n");
+				    SessionKeyServer.ks.put("t:" + realm + ":" + sha1, val);
 				    SessionKeyServer.ks.put("ut:" + realm + ":" + info[0], sha1);
 				    SessionKeyServer.ks.rm("t:" + realm + ":" + token);
-				    respond(exchange, 200, sha1 + "\n" + info[0] + "\n" + info[1] + "\n");
+				    respond(exchange, 200, sha1 + "\n" + val + "\n");
 				    System.out.println("replace: "+((new Date()).getTime())+" user='"+info[0]+"' "+info[1]+", "+realm_txt+":"+token+"/"+sha1+", VALID");
 				    return;
 				}
@@ -398,41 +398,49 @@ class SKSHandler implements HttpHandler {
 		    String user = queryMap.get("user");
 		    String pwd = queryMap.get("pwd");
 		    boolean succ = false;
-		    if (com.att.research.RCloud.PAM.checkUser((SessionKeyServer.pam_realm == null) ? realm_txt : SessionKeyServer.pam_realm, user, pwd)) {
+		    UserInfo info = null;
+		    if ((info = com.att.research.RCloud.PAM.checkUserWithInfo((SessionKeyServer.pam_realm == null) ? realm_txt : SessionKeyServer.pam_realm, user, pwd)) != null) {
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			String sha1 = bytes2hex(md.digest());
-			SessionKeyServer.ks.put("t:" + realm + ":" + sha1, user + "\npam\n");
+			String sInfo = "";
+			if (info != null && info.uid >= 0) sInfo = "uid="+info.uid+"\n";
+			if (info != null && info.gid >= 0) sInfo += "gid="+info.gid+"\n";
+			SessionKeyServer.ks.put("t:" + realm + ":" + sha1, user + "\npam\n" + sInfo);
 			SessionKeyServer.ks.put("ut:" + realm + ":" + user, sha1);
-			respond(exchange, 200, sha1 + "\n" + user + "\npam\n");
+			respond(exchange, 200, sha1 + "\n" + user + "\npam\n" + sInfo);
 			exchange.close();
 			succ = true;
 		    } else {
 			exchange.sendResponseHeaders(403, -1);
                         exchange.close();
 		    }
-		    System.out.println("PAM: "+((new Date()).getTime())+" user='"+user+"', "+realm_txt+", "+(succ?"OK":"FAILED"));
+		    System.out.println("PAM: "+((new Date()).getTime())+" user='"+user+"', "+realm_txt+", " + ((info == null) ? "" : info) +(succ?"OK":"FAILED"));
 		} else if (requestPath.equals("/auth_token")) {
                     String user = queryMap.get("user");
                     String pwd = queryMap.get("pwd");
                     String module = queryMap.get("module") == null ? SessionKeyServer.default_module : queryMap.get("module");
                     boolean succ = false;
+		    UserInfo info = null;
 		    if (((module.compareToIgnoreCase("pam") == 0) &&
-			 com.att.research.RCloud.PAM.checkUser((SessionKeyServer.pam_realm == null) ? realm_txt : SessionKeyServer.pam_realm, user, pwd)) ||
+			 (info = com.att.research.RCloud.PAM.checkUserWithInfo((SessionKeyServer.pam_realm == null) ? realm_txt : SessionKeyServer.pam_realm, user, pwd)) != null) ||
 			com.att.research.RCloud.JaasAuth.jaasLogin(user, pwd.toCharArray(), module)) {
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			md.update(java.util.UUID.randomUUID().toString().getBytes());
 			String sha1 = bytes2hex(md.digest());
-			SessionKeyServer.ks.put("t:" + realm + ":" + sha1, user + "\nauth/" + module + "\n");
+			String sInfo = "";
+			if (info != null && info.uid >= 0) sInfo = "uid="+info.uid+"\n";
+			if (info != null && info.gid >= 0) sInfo += "gid="+info.gid+"\n";
+			SessionKeyServer.ks.put("t:" + realm + ":" + sha1, user + "\nauth/" + module + "\n" + sInfo);
 			SessionKeyServer.ks.put("ut:" + realm + ":" + user, sha1);
-			respond(exchange, 200, sha1 + "\n" + user + "\nauth/" + module + "\n");
+			respond(exchange, 200, sha1 + "\n" + user + "\nauth/" + module + "\n" + sInfo);
 			exchange.close();
 			succ = true;
 		    } else {
 			exchange.sendResponseHeaders(403, -1);
 			exchange.close();
 		    }
-		    System.out.println("AUTH/" +  module + ": " + ((new Date()).getTime()) + " user='" + user + "', " + realm_txt + ", " + (succ ? "OK" : "FAILED"));
+		    System.out.println("AUTH/" +  module + ": " + ((new Date()).getTime()) + " user='" + user + "', " + realm_txt + ", " + ((info == null) ? "" : info) + (succ ? "OK" : "FAILED"));
 		} else if (requestPath.equals("/group_hash")) {
                     String group = queryMap.get("group");
                     String salt  = queryMap.get("salt");
